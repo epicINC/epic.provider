@@ -2,6 +2,26 @@
 # yarn lockfile v1
 
 
+"@types/node@*":
+  version "11.11.3"
+  resolved "http://registry.npm.taobao.org/@types/node/download/@types/node-11.11.3.tgz#7c6b0f8eaf16ae530795de2ad1b85d34bf2f5c58"
+  integrity sha1-fGsPjq8WrlMHld4q0bhdNL8vXFg=
+
+"@types/pg-types@*":
+  version "1.11.4"
+  resolved "http://registry.npm.taobao.org/@types/pg-types/download/@types/pg-types-1.11.4.tgz#8d7c59fb509ce3dca3f8bae589252051c639a9a8"
+  integrity sha1-jXxZ+1Cc49yj+LrliSUgUcY5qag=
+  dependencies:
+    moment ">=2.14.0"
+
+"@types/pg@^7.4.13":
+  version "7.4.13"
+  resolved "http://registry.npm.taobao.org/@types/pg/download/@types/pg-7.4.13.tgz#4630494096bceee5ee562339502e3448c09703a8"
+  integrity sha1-RjBJQJa87uXuViM5UC40SMCXA6g=
+  dependencies:
+    "@types/node" "*"
+    "@types/pg-types" "*"
+
 buffer-writer@2.0.0:
   version "2.0.0"
   resolved "http://registry.npm.taobao.org/buffer-writer/download/buffer-writer-2.0.0.tgz#ce7eb81a38f7829db09c873f2fbb792c0c98ec04"
@@ -13,6 +33,11 @@ debug@^4.1.1:
   integrity sha1-O3ImAlUQnGtYnO4FDx1RYTlmR5E=
   dependencies:
     ms "^2.1.1"
+
+moment@>=2.14.0:
+  version "2.24.0"
+  resolved "http://registry.npm.taobao.org/moment/download/moment-2.24.0.tgz#0d055d53f5052aa653c9f6eb68bb5d12bf5c2b5b"
+  integrity sha1-DQVdU/UFKqZTyfbraLtdEr9cK1s=
 
 ms@^2.1.1:
   version "2.1.1"
