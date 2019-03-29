@@ -12,10 +12,10 @@
   "author": "S",
   "license": "ISC",
   "dependencies": {
-    "@types/pg": "^7.4.13",
     "debug": "^4.1.1"
   },
   "devDependencies": {
-    "pg": "^7.8.1"
+		"pg": "^7.8.1",
+		"@types/pg": "^7.4.13"
   }
 }
