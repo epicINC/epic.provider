@@ -1,7 +1,7 @@
 // [postgresql ref](https://node-postgres.com)
-const debug = require('debug')('east.Provider.pg')
+const debug = require('debug')('epic.Provider.pg')
 
-import { Pool, QueryConfig, QueryResult } from 'pg'
+import { Pool, QueryConfig, QueryResult as PGQueryResult } from 'pg'
 
 
 interface IQueryResult {
@@ -10,6 +10,14 @@ interface IQueryResult {
 	columns: string[]
 	values: any[]
 }
+
+export interface IPagedParam {
+	skip?: number
+	take?: number
+}
+
+export type IQueryParam<T> = IPagedParam & Partial<T>
+
 
 
 class QueryBuilder {
@@ -41,7 +49,7 @@ class QueryBuilder {
 		return `SELECT * FROM "${this.opts.table}" LIMIT 1`
 	}
 
-	query<T>(q: Partial<T>): QueryConfig | string {
+	query<T>(q: Partial<T> | IQueryParam<T>): QueryConfig | string {
 		if (!q) return `SELECT * FROM ${this.opts.table};`
 		const parts = this.spread(q)
 		return {
@@ -87,8 +95,8 @@ export interface IProviderOptions {
 
 export interface IProvider<T> {
 
-	find(filter: Partial<T>): Promise<T | null>
-	query(filter: Partial<T>): Promise<T[] | null>
+	find<K extends T = T>(filter: Partial<K>): Promise<K | null>
+	query<K extends T = T>(filter: IQueryParam<K>): Promise<K[] | null>
 	insert(doc: T): Promise<any>
 	update(filter: Partial<T>, doc: object): Promise<any>
 	upsert(filter: Partial<T>, doc: object): Promise<any>
@@ -96,7 +104,6 @@ export interface IProvider<T> {
 }
 
 
-export const ProviderResult = Symbol('provider.result')
 
 export class PGProvider<T = any> implements IProvider<T> {
 
@@ -112,7 +119,8 @@ export class PGProvider<T = any> implements IProvider<T> {
 		this.builder = new QueryBuilder(this.opts)
 	}
 
-	[ProviderResult](action: 'find' | 'query', ret: QueryResult) {
+	/*
+	protected result(action: 'find' | 'query', ret: QueryResult) {
 		if (!ret) return null
 
 		if (action === 'find') return ret.rows && ret.rows[0] as T
@@ -120,8 +128,8 @@ export class PGProvider<T = any> implements IProvider<T> {
 
 		return null
 	}
-
-	async execute(query: string | QueryConfig, ...values: any[]): Promise<QueryResult> {
+*/
+	async execute(query: string | QueryConfig, ...values: any[]): Promise<PGQueryResult> {
 		const client = await this.pool.connect()
 		try {
 			if (!values || !values.length || typeof(query) === 'object')
@@ -132,16 +140,16 @@ export class PGProvider<T = any> implements IProvider<T> {
 		}
 	}
 
-	async find(q: Partial<T>) {
-		const command = this.builder.find(q)
-		debug('get: %o', command)
-		return this[ProviderResult]('find', await this.execute(command)) as T
-	}
-
-	async query(q: Partial<T>) {
+	async find<K extends T = T>(q: Partial<K>) {
 		const command = this.builder.find(q)
 		debug('find: %o', command)
-		return this[ProviderResult]('query', await this.execute(command)) as T[]
+		return new QueryResult<K>(await this.execute(command)).single()
+	}
+
+	async query<K extends T = T>(q: IQueryParam<K>) {
+		const command = this.builder.query(q)
+		debug('query: %o', command)
+		return new QueryResult<K>(await this.execute(command)).multi()
 	}
 
 	async insert(docs: Partial<T>) {
@@ -156,8 +164,7 @@ export class PGProvider<T = any> implements IProvider<T> {
 		return await this.execute(command)
 	}
 
-	async upsert(q: Partial<T>)
-	{
+	async upsert(q: Partial<T>) {
 		return null
 	}
 
@@ -167,4 +174,32 @@ export class PGProvider<T = any> implements IProvider<T> {
 		return await this.execute(command)
 	}
 
+}
+
+
+export class QueryResult<T> {
+
+	data: PGQueryResult
+
+	constructor(data: PGQueryResult) {
+		this.data = data
+	}
+
+	has() {
+		return !!(this.data.rows && this.data.rowCount)
+	}
+
+	single<K = T>() {
+		if (!this.has()) return null
+		return this.data.rows[0] as K
+	}
+
+	multi<K = T>() {
+		if (!this.has()) return null
+		return this.data.rows as K[]
+	}
+
+	result () {
+		return this.data
+	}
 }

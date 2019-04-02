@@ -1,17 +1,22 @@
-import { Pool, QueryConfig, QueryResult } from 'pg';
+import { Pool, QueryConfig, QueryResult as PGQueryResult } from 'pg';
 interface IQueryResult {
     skip?: number;
     take?: number;
     columns: string[];
     values: any[];
 }
+export interface IPagedParam {
+    skip?: number;
+    take?: number;
+}
+export declare type IQueryParam<T> = IPagedParam & Partial<T>;
 declare class QueryBuilder {
     opts: IProviderOptions;
     constructor(opts: IProviderOptions);
     columnTransform(properties: string[]): string[];
     spread(docs: any): Partial<IQueryResult>;
     find<T>(q: Partial<T>): QueryConfig | string;
-    query<T>(q: Partial<T>): QueryConfig | string;
+    query<T>(q: Partial<T> | IQueryParam<T>): QueryConfig | string;
     insert<T>(docs: T): QueryConfig;
     update<T>(q: Partial<T>, docs: Partial<T>): {
         text: string;
@@ -29,26 +34,32 @@ export interface IProviderOptions {
     };
 }
 export interface IProvider<T> {
-    find(filter: Partial<T>): Promise<T | null>;
-    query(filter: Partial<T>): Promise<T[] | null>;
+    find<K extends T = T>(filter: Partial<K>): Promise<K | null>;
+    query<K extends T = T>(filter: IQueryParam<K>): Promise<K[] | null>;
     insert(doc: T): Promise<any>;
     update(filter: Partial<T>, doc: object): Promise<any>;
     upsert(filter: Partial<T>, doc: object): Promise<any>;
     delete(filter: Partial<T>): Promise<any>;
 }
-export declare const ProviderResult: unique symbol;
 export declare class PGProvider<T = any> implements IProvider<T> {
     pool: Pool;
     opts: IProviderOptions;
     builder: QueryBuilder;
     constructor(pool: Pool, opts: IProviderOptions);
-    [ProviderResult](action: 'find' | 'query', ret: QueryResult): T | T[] | null;
-    execute(query: string | QueryConfig, ...values: any[]): Promise<QueryResult>;
-    find(q: Partial<T>): Promise<T>;
-    query(q: Partial<T>): Promise<T[]>;
-    insert(docs: Partial<T>): Promise<QueryResult>;
-    update(q: Partial<T>, docs: Partial<T>): Promise<QueryResult>;
+    execute(query: string | QueryConfig, ...values: any[]): Promise<PGQueryResult>;
+    find<K extends T = T>(q: Partial<K>): Promise<K | null>;
+    query<K extends T = T>(q: IQueryParam<K>): Promise<K[] | null>;
+    insert(docs: Partial<T>): Promise<PGQueryResult>;
+    update(q: Partial<T>, docs: Partial<T>): Promise<PGQueryResult>;
     upsert(q: Partial<T>): Promise<null>;
-    delete(q: Partial<T>): Promise<QueryResult>;
+    delete(q: Partial<T>): Promise<PGQueryResult>;
+}
+export declare class QueryResult<T> {
+    data: PGQueryResult;
+    constructor(data: PGQueryResult);
+    has(): boolean;
+    single<K = T>(): K | null;
+    multi<K = T>(): K[] | null;
+    result(): PGQueryResult;
 }
 export {};

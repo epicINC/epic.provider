@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const debug = require('debug')('east.Provider.pg');
+const debug = require('debug')('epic.Provider.pg');
 class QueryBuilder {
     constructor(opts) {
         this.opts = opts;
@@ -59,22 +59,12 @@ class QueryBuilder {
         };
     }
 }
-exports.ProviderResult = Symbol('provider.result');
 class PGProvider {
     constructor(pool, opts) {
         this.pool = pool;
         this.opts = opts || {};
         this.opts.table = this.opts.table || this.constructor.name.replace('Provider', '');
         this.builder = new QueryBuilder(this.opts);
-    }
-    [exports.ProviderResult](action, ret) {
-        if (!ret)
-            return null;
-        if (action === 'find')
-            return ret.rows && ret.rows[0];
-        if (action === 'query')
-            return ret.rows;
-        return null;
     }
     async execute(query, ...values) {
         const client = await this.pool.connect();
@@ -89,13 +79,13 @@ class PGProvider {
     }
     async find(q) {
         const command = this.builder.find(q);
-        debug('get: %o', command);
-        return this[exports.ProviderResult]('find', await this.execute(command));
+        debug('find: %o', command);
+        return new QueryResult(await this.execute(command)).single();
     }
     async query(q) {
-        const command = this.builder.find(q);
-        debug('find: %o', command);
-        return this[exports.ProviderResult]('query', await this.execute(command));
+        const command = this.builder.query(q);
+        debug('query: %o', command);
+        return new QueryResult(await this.execute(command)).multi();
     }
     async insert(docs) {
         const command = this.builder.insert(docs);
@@ -117,4 +107,26 @@ class PGProvider {
     }
 }
 exports.PGProvider = PGProvider;
+class QueryResult {
+    constructor(data) {
+        this.data = data;
+    }
+    has() {
+        return !!(this.data.rows && this.data.rowCount);
+    }
+    single() {
+        if (!this.has())
+            return null;
+        return this.data.rows[0];
+    }
+    multi() {
+        if (!this.has())
+            return null;
+        return this.data.rows;
+    }
+    result() {
+        return this.data;
+    }
+}
+exports.QueryResult = QueryResult;
 //# sourceMappingURL=pgProvider.js.map
