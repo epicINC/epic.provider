@@ -4,13 +4,20 @@ const debug = require('debug')('epic.Provider.pg');
 class QueryBuilder {
     constructor(opts) {
         this.opts = opts;
+        if (this.opts.columns && this.opts.primaryKeys)
+            this.primaryKeys = this.columnTransform(this.opts.primaryKeys);
+        else
+            this.primaryKeys = this.opts.primaryKeys || ['id'];
     }
     columnTransform(properties) {
+        if (!this.opts.columns)
+            return properties;
         return properties.map(e => this.opts.columns && this.opts.columns[e] || e);
     }
     spread(docs) {
         if (!docs)
             return {};
+        (this.opts.primaryKeys || this.primaryKeys).forEach(e => Reflect.has(docs, e) && !docs[e] && delete docs[e]);
         const { skip, take, ...q } = docs;
         return { columns: this.columnTransform(Object.keys(q)), values: Object.values(q), skip, take };
     }
@@ -37,7 +44,7 @@ class QueryBuilder {
     insert(docs) {
         const parts = this.spread(docs);
         return {
-            text: `INSERT INTO "${this.opts.table}" (${parts.columns && parts.columns.map((e) => `"${e}"`).join(',')}) VALUES (${parts.columns && parts.columns.map((e, i) => `$${i + 1}`).join(',')})`,
+            text: `INSERT INTO "${this.opts.table}" (${parts.columns && parts.columns.map((e) => `"${e}"`).join(',')}) VALUES (${parts.columns && parts.columns.map((e, i) => `$${i + 1}`).join(',')}) RETURNING "${this.primaryKeys[0]}";`,
             values: parts.values
         };
     }
@@ -90,7 +97,7 @@ class PGProvider {
     async insert(docs) {
         const command = this.builder.insert(docs);
         debug('insert: %o', command);
-        return await this.execute(command);
+        return new QueryResult(await this.execute(command)).single()[this.builder.primaryKeys[0]] || 0;
     }
     async update(q, docs) {
         const command = this.builder.update(q, docs);
@@ -121,7 +128,7 @@ class QueryResult {
     }
     multi() {
         if (!this.has())
-            return null;
+            return new Array();
         return this.data.rows;
     }
     result() {

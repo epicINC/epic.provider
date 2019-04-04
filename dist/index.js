@@ -4,4 +4,5 @@ function __export(m) {
 }
 Object.defineProperty(exports, "__esModule", { value: true });
 __export(require("./pgProvider"));
+__export(require("./pgConnectionStrings"));
 //# sourceMappingURL=index.js.map

@@ -11,7 +11,8 @@ export interface IPagedParam {
 }
 export declare type IQueryParam<T> = IPagedParam & Partial<T>;
 declare class QueryBuilder {
-    opts: IProviderOptions;
+    private opts;
+    primaryKeys: string[];
     constructor(opts: IProviderOptions);
     columnTransform(properties: string[]): string[];
     spread(docs: any): Partial<IQueryResult>;
@@ -32,10 +33,11 @@ export interface IProviderOptions {
     columns?: {
         [key: string]: string;
     };
+    primaryKeys?: string[];
 }
 export interface IProvider<T> {
-    find<K extends T = T>(filter: Partial<K>): Promise<K | null>;
-    query<K extends T = T>(filter: IQueryParam<K>): Promise<K[] | null>;
+    find<K extends T = T>(filter: Partial<K>): Promise<K>;
+    query<K extends T = T>(filter: IQueryParam<K>): Promise<K[]>;
     insert(doc: T): Promise<any>;
     update(filter: Partial<T>, doc: object): Promise<any>;
     upsert(filter: Partial<T>, doc: object): Promise<any>;
@@ -47,19 +49,19 @@ export declare class PGProvider<T = any> implements IProvider<T> {
     builder: QueryBuilder;
     constructor(pool: Pool, opts: IProviderOptions);
     execute(query: string | QueryConfig, ...values: any[]): Promise<PGQueryResult>;
-    find<K extends T = T>(q: Partial<K>): Promise<K | null>;
-    query<K extends T = T>(q: IQueryParam<K>): Promise<K[] | null>;
-    insert(docs: Partial<T>): Promise<PGQueryResult>;
+    find<K extends T = T>(q: Partial<K>): Promise<K>;
+    query<K extends T = T>(q: IQueryParam<K>): Promise<K[]>;
+    insert(docs: Partial<T>): Promise<any>;
     update(q: Partial<T>, docs: Partial<T>): Promise<PGQueryResult>;
     upsert(q: Partial<T>): Promise<null>;
     delete(q: Partial<T>): Promise<PGQueryResult>;
 }
-export declare class QueryResult<T> {
+export declare class QueryResult<T = any> {
     data: PGQueryResult;
     constructor(data: PGQueryResult);
     has(): boolean;
-    single<K = T>(): K | null;
-    multi<K = T>(): K[] | null;
+    single<K = T>(): K;
+    multi<K = T>(): K[];
     result(): PGQueryResult;
 }
 export {};

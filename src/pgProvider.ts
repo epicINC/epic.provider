@@ -3,7 +3,6 @@ const debug = require('debug')('epic.Provider.pg')
 
 import { Pool, QueryConfig, QueryResult as PGQueryResult } from 'pg'
 
-
 interface IQueryResult {
 	skip?: number
 	take?: number
@@ -19,22 +18,42 @@ export interface IPagedParam {
 export type IQueryParam<T> = IPagedParam & Partial<T>
 
 
+/*
+class columnBuilder {
+	constructor(opts: IProviderOptions) {
+
+	}
+
+	to () {
+		
+	}
+}
+*/
+
 
 class QueryBuilder {
-	opts: IProviderOptions
+	private opts: IProviderOptions
+
+	primaryKeys: string[]
 
 	constructor(opts: IProviderOptions) {
 		this.opts = opts
+
+		if (this.opts.columns && this.opts.primaryKeys) 
+			this.primaryKeys = this.columnTransform(this.opts.primaryKeys)
+		else
+			this.primaryKeys = this.opts.primaryKeys || ['id']
 	}
 
 	columnTransform(properties: string[]) {
+		if (!this.opts.columns) return properties
 		return properties.map(e => this.opts.columns && this.opts.columns[e] || e)
 	}
 
 	spread(docs: any): Partial<IQueryResult> {
-		if (!docs) return {}
+		if (!docs) return {};
+		(this.opts.primaryKeys || this.primaryKeys).forEach(e => Reflect.has(docs, e) && !docs[e] && delete docs[e])
 		const { skip, take, ...q} = docs
-
 		return { columns: this.columnTransform(Object.keys(q)), values: Object.values(q), skip, take}
 	}
 
@@ -61,7 +80,7 @@ class QueryBuilder {
 	insert<T>(docs: T): QueryConfig {
 		const parts = this.spread(docs)
 		return {
-			text: `INSERT INTO "${this.opts.table}" (${parts.columns && parts.columns.map((e: any) => `"${e}"`).join(',')}) VALUES (${parts.columns && parts.columns.map((e, i) => `$${i+1}`).join(',')})`,
+			text: `INSERT INTO "${this.opts.table}" (${parts.columns && parts.columns.map((e: any) => `"${e}"`).join(',')}) VALUES (${parts.columns && parts.columns.map((e, i) => `$${i+1}`).join(',')}) RETURNING "${this.primaryKeys[0]}";`,
 			values: parts.values
 		}
 	}
@@ -89,14 +108,14 @@ class QueryBuilder {
 
 export interface IProviderOptions {
 	table?: string
-	columns?:{[key:string]:string}
+	columns?:{[key:string]: string},
+	primaryKeys?: string[]
 }
 
 
 export interface IProvider<T> {
-
-	find<K extends T = T>(filter: Partial<K>): Promise<K | null>
-	query<K extends T = T>(filter: IQueryParam<K>): Promise<K[] | null>
+	find<K extends T = T>(filter: Partial<K>): Promise<K>
+	query<K extends T = T>(filter: IQueryParam<K>): Promise<K[]>
 	insert(doc: T): Promise<any>
 	update(filter: Partial<T>, doc: object): Promise<any>
 	upsert(filter: Partial<T>, doc: object): Promise<any>
@@ -154,8 +173,9 @@ export class PGProvider<T = any> implements IProvider<T> {
 
 	async insert(docs: Partial<T>) {
 		const command = this.builder.insert(docs)
+		//command.text += 'return select lastval() as insert_id;'
 		debug('insert: %o', command)
-		return await this.execute(command)
+		return new QueryResult(await this.execute(command)).single()[this.builder.primaryKeys[0]] || 0
 	}
 
 	async update(q: Partial<T>, docs: Partial<T>) {
@@ -177,7 +197,7 @@ export class PGProvider<T = any> implements IProvider<T> {
 }
 
 
-export class QueryResult<T> {
+export class QueryResult<T = any> {
 
 	data: PGQueryResult
 
@@ -189,13 +209,13 @@ export class QueryResult<T> {
 		return !!(this.data.rows && this.data.rowCount)
 	}
 
-	single<K = T>() {
-		if (!this.has()) return null
+	single<K = T>() : K {
+		if (!this.has()) return null as unknown as K
 		return this.data.rows[0] as K
 	}
 
 	multi<K = T>() {
-		if (!this.has()) return null
+		if (!this.has()) return new Array<K>()
 		return this.data.rows as K[]
 	}
 
@@ -203,3 +223,4 @@ export class QueryResult<T> {
 		return this.data
 	}
 }
+
