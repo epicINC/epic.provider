@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const debug = require('debug')('epic.Provider.pg');
+const debug = require('debug')('epic.provider.pg');
 class QueryBuilder {
     constructor(opts) {
         this.opts = opts;

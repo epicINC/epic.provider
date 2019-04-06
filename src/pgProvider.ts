@@ -1,5 +1,5 @@
 // [postgresql ref](https://node-postgres.com)
-const debug = require('debug')('epic.Provider.pg')
+const debug = require('debug')('epic.provider.pg')
 
 import { Pool, QueryConfig, QueryResult as PGQueryResult } from 'pg'
 
