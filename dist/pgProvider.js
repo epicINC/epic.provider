@@ -1,68 +1,77 @@
 "use strict";
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
 Object.defineProperty(exports, "__esModule", { value: true });
 const debug = require('debug')('epic.provider.pg');
-class QueryBuilder {
+const query_1 = require("./query");
+__export(require("./query"));
+const orderChecker = /\s(asc|desc)$/i;
+class PGQueryBuilder {
     constructor(opts) {
+        this.builder = new query_1.QueryBuilder();
         this.opts = opts;
         if (this.opts.columns && this.opts.primaryKeys)
-            this.primaryKeys = this.columnTransform(this.opts.primaryKeys);
+            this.primaryKeys = this.opts.primaryKeys.map(e => this.columnTransform(e));
         else
             this.primaryKeys = this.opts.primaryKeys || ['id'];
     }
-    columnTransform(properties) {
+    columnTransform(name) {
         if (!this.opts.columns)
-            return properties;
-        return properties.map(e => this.opts.columns && this.opts.columns[e] || e);
+            return name;
+        return this.opts.columns && this.opts.columns[name] || name;
     }
-    spread(docs) {
-        if (!docs)
-            return {};
-        (this.opts.primaryKeys || this.primaryKeys).forEach(e => Reflect.has(docs, e) && !docs[e] && delete docs[e]);
-        const { skip, take, ...q } = docs;
-        return { columns: this.columnTransform(Object.keys(q)), values: Object.values(q), skip, take };
+    buildOrderItem(data) {
+        if (!Array.isArray(data))
+            return orderChecker.test(data) ? data : `"${this.columnTransform(data)}"`;
+        return `"${this.columnTransform(data[0])} ${data[1]}"`;
     }
-    find(q) {
-        if (!q)
-            return `SELECT * FROM ${this.opts.table} LIMIT 1;`;
-        const parts = this.spread(q);
-        if (parts.columns && parts.columns.length)
-            return {
-                text: `SELECT * FROM "${this.opts.table}" WHERE ${parts.columns.map((e, i) => `"${e}"=$${i + 1}`).join(' AND ')} LIMIT 1 ${parts.skip && ' OFFSET ' + parts.skip || ''};`,
-                values: parts.values
-            };
-        return `SELECT * FROM "${this.opts.table}" LIMIT 1`;
+    buildQuery(query) {
+        return {
+            text: `SELECT * FROM ${this.opts.table}
+			WHERE ${query.where.columns && query.where.columns.map((e, i) => `"${this.columnTransform(e)}"=$${i + 1}`).join(' AND ')}
+			${query.order && ` ORDER BY ${query.order.map(e => this.buildOrderItem(e)).join(',')}` || ''}
+			${query.take && ' LIMIT ' + query.take || ''}
+			${query.skip && ' OFFSET ' + query.skip || ''};`,
+            values: query.where.values
+        };
     }
-    query(q) {
-        if (!q)
+    find(filter) {
+        if (!filter)
             return `SELECT * FROM ${this.opts.table};`;
-        const parts = this.spread(q);
+        let query = this.builder.query(filter);
+        query.take = 1;
+        return this.buildQuery(this.builder.query(filter));
+    }
+    query(filter) {
+        if (!filter)
+            return `SELECT * FROM ${this.opts.table};`;
+        return this.buildQuery(this.builder.query(filter));
+    }
+    insert(data) {
+        let query = this.builder.insert(data);
         return {
-            text: `SELECT * FROM ${this.opts.table} WHERE ${parts.columns && parts.columns.map((e, i) => `"${e}"=$${i + 1}`).join(' AND ')}${parts.take && ' LIMIT ' + parts.take || ''}${parts.skip && ' OFFSET ' + parts.skip || ''};`,
-            values: parts.values
+            text: `INSERT INTO "${this.opts.table}" (${query.columns && query.columns.map((e) => `"${e}"`).join(',')}) VALUES (${query.columns && query.columns.map((e, i) => `$${i + 1}`).join(',')}) RETURNING "${this.primaryKeys[0]}";`,
+            values: query.values
         };
     }
-    insert(docs) {
-        const parts = this.spread(docs);
-        return {
-            text: `INSERT INTO "${this.opts.table}" (${parts.columns && parts.columns.map((e) => `"${e}"`).join(',')}) VALUES (${parts.columns && parts.columns.map((e, i) => `$${i + 1}`).join(',')}) RETURNING "${this.primaryKeys[0]}";`,
-            values: parts.values
-        };
-    }
-    update(q, docs) {
-        if (!docs)
-            [q, docs] = [docs, q];
-        const filter = this.spread(q), parts = this.spread(docs);
+    update(filter, data) {
+        if (!data)
+            [filter, data] = [{}, filter];
+        let query = this.builder.update(filter, data);
         let i = 1;
         return {
-            text: `UPDATE "${this.opts.table}" SET ${parts.columns && parts.columns.map(e => `"${e}"=$${i++}`).join(',')}${filter.columns && filter.columns.length && ' WHERE ' + filter.columns.map(e => `"${e}"=$${i++}`).join(',') || ''};`,
-            values: parts.values && parts.values.concat(filter.values) || filter.values
+            text: `UPDATE "${this.opts.table}" SET 
+${query.data.columns && query.data.columns.map(e => `"${this.columnTransform(e)}"=$${i++}`).join(',')}
+${query.filter.columns && query.filter.columns.length && ' WHERE ' + query.filter.columns.map(e => `"${this.columnTransform(e)}"=$${i++}`).join(',') || ''};`,
+            values: query.data.values && query.data.values.concat(query.filter.values) || query.filter.values
         };
     }
-    del(q) {
-        const parts = this.spread(q);
+    delete(filter) {
+        let query = this.builder.delete(filter);
         return {
-            text: `DELETE FROM "${this.opts.table}"${parts.columns && parts.columns.length && ' WHERE ' + parts.columns.map((e, i) => `"${e}"=$${++i}`).join(' AND ') || ''};`,
-            values: parts.values
+            text: `DELETE FROM "${this.opts.table}"${query.columns && query.columns.length && ' WHERE ' + query.columns.map((e, i) => `"${this.columnTransform(e)}"=$${++i}`).join(' AND ') || ''};`,
+            values: query.values
         };
     }
 }
@@ -71,7 +80,7 @@ class PGProvider {
         this.pool = pool;
         this.opts = opts || {};
         this.opts.table = this.opts.table || this.constructor.name.replace('Provider', '');
-        this.builder = new QueryBuilder(this.opts);
+        this.builder = new PGQueryBuilder(this.opts);
     }
     async execute(query, ...values) {
         const client = await this.pool.connect();
@@ -84,31 +93,31 @@ class PGProvider {
             client.release();
         }
     }
-    async find(q) {
-        const command = this.builder.find(q);
+    async find(filter) {
+        const command = this.builder.find(filter);
         debug('find: %o', command);
         return new QueryResult(await this.execute(command)).single();
     }
-    async query(q) {
-        const command = this.builder.query(q);
+    async query(filter) {
+        const command = this.builder.query(filter);
         debug('query: %o', command);
         return new QueryResult(await this.execute(command)).multi();
     }
-    async insert(docs) {
-        const command = this.builder.insert(docs);
+    async insert(data) {
+        const command = this.builder.insert(data);
         debug('insert: %o', command);
         return new QueryResult(await this.execute(command)).single()[this.builder.primaryKeys[0]] || 0;
     }
-    async update(q, docs) {
-        const command = this.builder.update(q, docs);
+    async update(filter, data) {
+        const command = this.builder.update(filter, data);
         debug('update: %o', command);
         return await this.execute(command);
     }
     async upsert(q) {
         return null;
     }
-    async delete(q) {
-        const command = this.builder.del(q);
+    async delete(filter) {
+        const command = this.builder.delete(filter);
         debug('del: %o', command);
         return await this.execute(command);
     }

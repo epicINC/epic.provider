@@ -2,20 +2,9 @@
 const debug = require('debug')('epic.provider.pg')
 
 import { Pool, QueryConfig, QueryResult as PGQueryResult } from 'pg'
+import { QueryBuilder, IProviderOptions, IQueryData, IQueryBuilderResult } from './query';
 
-interface IQueryResult {
-	skip?: number
-	take?: number
-	columns: string[]
-	values: any[]
-}
-
-export interface IPagedParam {
-	skip?: number
-	take?: number
-}
-
-export type IQueryParam<T> = IPagedParam & Partial<T>
+export * from './query'
 
 
 /*
@@ -30,96 +19,98 @@ class columnBuilder {
 }
 */
 
+const orderChecker = /\s(asc|desc)$/i
 
-class QueryBuilder {
+class PGQueryBuilder<T = any> {
+	builder: QueryBuilder
 	private opts: IProviderOptions
 
 	primaryKeys: string[]
 
 	constructor(opts: IProviderOptions) {
+		this.builder = new QueryBuilder()
 		this.opts = opts
 
 		if (this.opts.columns && this.opts.primaryKeys) 
-			this.primaryKeys = this.columnTransform(this.opts.primaryKeys)
+			this.primaryKeys = this.opts.primaryKeys.map(e => this.columnTransform(e))
 		else
 			this.primaryKeys = this.opts.primaryKeys || ['id']
 	}
 
-	columnTransform(properties: string[]) {
-		if (!this.opts.columns) return properties
-		return properties.map(e => this.opts.columns && this.opts.columns[e] || e)
+	columnTransform(name: string) {
+		if (!this.opts.columns) return name
+		return this.opts.columns && this.opts.columns[name] || name
 	}
 
-	spread(docs: any): Partial<IQueryResult> {
-		if (!docs) return {};
-		(this.opts.primaryKeys || this.primaryKeys).forEach(e => Reflect.has(docs, e) && !docs[e] && delete docs[e])
-		const { skip, take, ...q} = docs
-		return { columns: this.columnTransform(Object.keys(q)), values: Object.values(q), skip, take}
+	buildOrderItem(data: string | [string, 'asc'|'desc']) {
+		if (!Array.isArray(data)) return orderChecker.test(data) ? data : `"${this.columnTransform(data)}"`
+		return `"${this.columnTransform(data[0])} ${data[1]}"`
 	}
 
-	find<T>(q: Partial<T>) : QueryConfig | string {
-		if (!q) return `SELECT * FROM ${this.opts.table} LIMIT 1;`
-		const parts = this.spread(q)
-		if (parts.columns && parts.columns.length)
-			return {
-				text: `SELECT * FROM "${this.opts.table}" WHERE ${ parts.columns.map((e, i) => `"${e}"=$${i+1}`).join(' AND ') } LIMIT 1 ${ parts.skip && ' OFFSET '+ parts.skip || '' };`,
-				values: parts.values
-			}
-		return `SELECT * FROM "${this.opts.table}" LIMIT 1`
-	}
-
-	query<T>(q: Partial<T> | IQueryParam<T>): QueryConfig | string {
-		if (!q) return `SELECT * FROM ${this.opts.table};`
-		const parts = this.spread(q)
+	private buildQuery(query: IQueryBuilderResult) {
 		return {
-			text: `SELECT * FROM ${this.opts.table} WHERE ${parts.columns && parts.columns.map((e:any, i: number) => `"${e}"=$${i+1}`).join(' AND ') }${parts.take && ' LIMIT '+ parts.take || ''}${ parts.skip && ' OFFSET '+ parts.skip || '' };`,
-			values: parts.values
+			text: `SELECT * FROM ${this.opts.table}
+			WHERE ${query.where.columns && query.where.columns.map((e:any, i: number) => `"${this.columnTransform(e)}"=$${i+1}`).join(' AND ') }
+			${query.order && ` ORDER BY ${ query.order.map(e => this.buildOrderItem(e)).join(',') }` || ''}
+			${query.take && ' LIMIT '+ query.take || ''}
+			${ query.skip && ' OFFSET '+ query.skip || '' };`,
+			values: query.where.values
 		}
 	}
 
-	insert<T>(docs: T): QueryConfig {
-		const parts = this.spread(docs)
+	find<K extends T>(filter: Partial<K> | Partial<IQueryData>) : QueryConfig | string {
+		if (!filter) return `SELECT * FROM ${this.opts.table};`
+		let query = this.builder.query(filter)
+		query.take = 1
+		return this.buildQuery(this.builder.query(filter))
+	}
+
+	query<K extends T>(filter: Partial<K> | Partial<IQueryData>) : QueryConfig | string {
+		if (!filter) return `SELECT * FROM ${this.opts.table};`
+		return this.buildQuery(this.builder.query(filter))
+	}
+
+	insert<K extends T>(data: Partial<K>): QueryConfig {
+		let query = this.builder.insert(data)
+
 		return {
-			text: `INSERT INTO "${this.opts.table}" (${parts.columns && parts.columns.map((e: any) => `"${e}"`).join(',')}) VALUES (${parts.columns && parts.columns.map((e, i) => `$${i+1}`).join(',')}) RETURNING "${this.primaryKeys[0]}";`,
-			values: parts.values
+			text: `INSERT INTO "${this.opts.table}" (${query.columns && query.columns.map((e: any) => `"${e}"`).join(',')}) VALUES (${query.columns && query.columns.map((e, i) => `$${i+1}`).join(',')}) RETURNING "${this.primaryKeys[0]}";`,
+			values: query.values
 		}
 	}
 
-	update<T>(q: Partial<T>, docs: Partial<T>) {
-		if (!docs) [q, docs] = [docs, q]
-
-		const filter = this.spread(q), parts = this.spread(docs)
+	update<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>) {
+		if (!data) [filter, data] = [{}, <Partial<K>>filter]
+		let query = this.builder.update(filter, data)
 
 		let i = 1
 		return {
-			text: `UPDATE "${this.opts.table}" SET ${parts.columns && parts.columns.map(e => `"${e}"=$${i++}`).join(',')}${filter.columns && filter.columns.length && ' WHERE '+ filter.columns.map(e => `"${e}"=$${i++}`).join(',')  || '' };`,
-			values: parts.values && parts.values.concat(filter.values) || filter.values
+			text: `UPDATE "${this.opts.table}" SET 
+${query.data.columns && query.data.columns.map(e => `"${this.columnTransform(e)}"=$${i++}`).join(',')}
+${query.filter.columns && query.filter.columns.length && ' WHERE '+ query.filter.columns.map(e => `"${this.columnTransform(e)}"=$${i++}`).join(',')  || '' };`,
+
+			values: query.data.values && query.data.values.concat(query.filter.values) || query.filter.values
 		}
 	}
 
-	del<T>(q: Partial<T>) {
-		const parts = this.spread(q)
+	delete<K extends T>(filter: Partial<K>) {
+		let query = this.builder.delete(filter)
+
 		return {
-			text: `DELETE FROM "${this.opts.table}"${parts.columns && parts.columns.length && ' WHERE '+ parts.columns.map((e, i) => `"${e}"=$${++i}`).join(' AND ') || '' };`,
-			values: parts.values
+			text: `DELETE FROM "${this.opts.table}"${query.columns && query.columns.length && ' WHERE '+ query.columns.map((e, i) => `"${this.columnTransform(e)}"=$${++i}`).join(' AND ') || '' };`,
+			values: query.values
 		}
 	}
-}
-
-export interface IProviderOptions {
-	table?: string
-	columns?:{[key:string]: string},
-	primaryKeys?: string[]
 }
 
 
 export interface IProvider<T> {
-	find<K extends T = T>(filter: Partial<K>): Promise<K>
-	query<K extends T = T>(filter: IQueryParam<K>): Promise<K[]>
-	insert(doc: T): Promise<any>
-	update(filter: Partial<T>, doc: object): Promise<any>
-	upsert(filter: Partial<T>, doc: object): Promise<any>
-	delete(filter: Partial<T>): Promise<any>
+	find<K extends T>(filter: Partial<K> | Partial<IQueryData>): Promise<K>
+	query<K extends T>(filter: Partial<K> | Partial<IQueryData>): Promise<K[]>
+	insert<K extends T>(data: Partial<K>): Promise<any>
+	update<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>): Promise<any>
+	upsert<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>): Promise<any>
+	delete<K extends T>(filter: Partial<K>): Promise<any>
 }
 
 
@@ -128,14 +119,14 @@ export class PGProvider<T = any> implements IProvider<T> {
 
 	pool: Pool
 	opts: IProviderOptions
-	builder: QueryBuilder
+	builder: PGQueryBuilder<T>
 
 	constructor(pool: Pool, opts: IProviderOptions) {
 		this.pool = pool
 		this.opts = opts || {}
 		this.opts.table = this.opts.table || this.constructor.name.replace('Provider', '')
 
-		this.builder = new QueryBuilder(this.opts)
+		this.builder = new PGQueryBuilder<T>(this.opts)
 	}
 
 	/*
@@ -159,27 +150,26 @@ export class PGProvider<T = any> implements IProvider<T> {
 		}
 	}
 
-	async find<K extends T = T>(q: Partial<K>) {
-		const command = this.builder.find(q)
+	async find<K extends T>(filter: Partial<K> | Partial<IQueryData>) {
+		const command = this.builder.find(filter)
 		debug('find: %o', command)
-		return new QueryResult<K>(await this.execute(command)).single()
+		return new QueryResult<K>(await this.execute(command)).single<K>()
 	}
 
-	async query<K extends T = T>(q: IQueryParam<K>) {
-		const command = this.builder.query(q)
+	async query<K extends T>(filter: Partial<K> | Partial<IQueryData>) {
+		const command = this.builder.query(filter)
 		debug('query: %o', command)
 		return new QueryResult<K>(await this.execute(command)).multi()
 	}
 
-	async insert(docs: Partial<T>) {
-		const command = this.builder.insert(docs)
-		//command.text += 'return select lastval() as insert_id;'
+	async insert<K extends T>(data: Partial<K>) {
+		const command = this.builder.insert(data)
 		debug('insert: %o', command)
 		return new QueryResult(await this.execute(command)).single()[this.builder.primaryKeys[0]] || 0
 	}
 
-	async update(q: Partial<T>, docs: Partial<T>) {
-		const command = this.builder.update(q, docs)
+	async update<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>) {
+		const command = this.builder.update(filter, data)
 		debug('update: %o', command)
 		return await this.execute(command)
 	}
@@ -188,8 +178,8 @@ export class PGProvider<T = any> implements IProvider<T> {
 		return null
 	}
 
-	async delete(q: Partial<T>) {
-		const command = this.builder.del(q)
+	async delete<K extends T>(filter: Partial<K>) {
+		const command = this.builder.delete(filter)
 		debug('del: %o', command)
 		return await this.execute(command)
 	}
@@ -209,7 +199,7 @@ export class QueryResult<T = any> {
 		return !!(this.data.rows && this.data.rowCount)
 	}
 
-	single<K = T>() : K {
+	single<K>() : K {
 		if (!this.has()) return null as unknown as K
 		return this.data.rows[0] as K
 	}
