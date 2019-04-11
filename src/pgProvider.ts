@@ -28,13 +28,9 @@ class PGQueryBuilder<T = any> {
 	primaryKeys: string[]
 
 	constructor(opts: IProviderOptions) {
-		this.builder = new QueryBuilder()
+		this.builder = new QueryBuilder(opts)
 		this.opts = opts
-
-		if (this.opts.columns && this.opts.primaryKeys) 
-			this.primaryKeys = this.opts.primaryKeys.map(e => this.columnTransform(e))
-		else
-			this.primaryKeys = this.opts.primaryKeys || ['id']
+		this.primaryKeys = this.builder.primaryKeys.map(e => this.columnTransform(e))
 	}
 
 	columnTransform(name: string) {
@@ -74,7 +70,9 @@ class PGQueryBuilder<T = any> {
 		let query = this.builder.insert(data)
 
 		return {
-			text: `INSERT INTO "${this.opts.table}" (${query.columns && query.columns.map((e: any) => `"${e}"`).join(',')}) VALUES (${query.columns && query.columns.map((e, i) => `$${i+1}`).join(',')}) RETURNING "${this.primaryKeys[0]}";`,
+			text: `
+INSERT INTO "${this.opts.table}" (${query.columns && query.columns.map((e: any) => `"${e}"`).join(',')}) VALUES (${query.columns && query.columns.map((e, i) => `$${i+1}`).join(',')})
+RETURNING "${this.primaryKeys[0]}";`,
 			values: query.values
 		}
 	}

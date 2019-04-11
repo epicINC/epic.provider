@@ -6,9 +6,20 @@ export interface IProviderOptions {
 
 export class QueryBuilder<T = any> {
 
+	private opts: IProviderOptions
+	primaryKeys: string[]
+
+	constructor (opts: IProviderOptions) {
+		this.opts = opts
+
+		if (this.opts.columns && this.opts.primaryKeys) 
+			this.primaryKeys = this.opts.primaryKeys
+		else
+			this.primaryKeys = this.opts.primaryKeys || ['id']
+	}
 
 	private buildWhere (data: IWhereFilter | undefined) {
-		if (!data) return undefined as unknown as {columns: string[], values: any[]}
+		if (!data) return {columns:[],  values: []}
 		return {
 			columns: Object.keys(data),
 			values: Object.values(data)
@@ -50,12 +61,20 @@ export class QueryBuilder<T = any> {
 		result.where = this.buildWhere(filter.where)
 		result.order = this.buildOrder(filter.order)
 		result.skip = this.buildSkip(filter.skip)
-		result.take = this.buildTake(filter.skip)
+		result.take = this.buildTake(filter.take)
 		return result
 	}
 
 	insert<K extends T>(data: Partial<K>) {
-		return this.buildWhere(data)
+		const
+			result =  this.buildWhere(data)
+			
+		if (!result.columns.length) return result
+		const index = result.columns.indexOf(this.primaryKeys[0])
+		if (index === -1) return result
+		result.columns.splice(index, 1)
+		result.values.splice(index, 1)
+		return result
 	}
 
 	update<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>) {

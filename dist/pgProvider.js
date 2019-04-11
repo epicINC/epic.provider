@@ -9,12 +9,9 @@ __export(require("./query"));
 const orderChecker = /\s(asc|desc)$/i;
 class PGQueryBuilder {
     constructor(opts) {
-        this.builder = new query_1.QueryBuilder();
+        this.builder = new query_1.QueryBuilder(opts);
         this.opts = opts;
-        if (this.opts.columns && this.opts.primaryKeys)
-            this.primaryKeys = this.opts.primaryKeys.map(e => this.columnTransform(e));
-        else
-            this.primaryKeys = this.opts.primaryKeys || ['id'];
+        this.primaryKeys = this.builder.primaryKeys.map(e => this.columnTransform(e));
     }
     columnTransform(name) {
         if (!this.opts.columns)

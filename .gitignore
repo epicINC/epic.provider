@@ -59,3 +59,8 @@ typings/
 
 # next.js build output
 .next
+epic.provider.zip
+yarn.lock
+package-lock.json
+.npmrc
+dist

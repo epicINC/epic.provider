@@ -6,6 +6,9 @@ export interface IProviderOptions {
     primaryKeys?: string[];
 }
 export declare class QueryBuilder<T = any> {
+    private opts;
+    primaryKeys: string[];
+    constructor(opts: IProviderOptions);
     private buildWhere;
     private buildOrder;
     private buildSkip;
@@ -53,7 +56,7 @@ export interface IQueryData {
     fields: string | string[] | IFieldsFilter;
     include: string | string[] | IIncludeFilter;
     where: IWhereFilter;
-    order: string | [string, 'asc' | 'desc'][];
+    order: string | string[] | [string, 'asc' | 'desc'][];
     skip: number;
     take: number;
 }

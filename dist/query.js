@@ -1,9 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class QueryBuilder {
+    constructor(opts) {
+        this.opts = opts;
+        if (this.opts.columns && this.opts.primaryKeys)
+            this.primaryKeys = this.opts.primaryKeys;
+        else
+            this.primaryKeys = this.opts.primaryKeys || ['id'];
+    }
     buildWhere(data) {
         if (!data)
-            return undefined;
+            return { columns: [], values: [] };
         return {
             columns: Object.keys(data),
             values: Object.values(data)
@@ -38,11 +45,19 @@ class QueryBuilder {
         result.where = this.buildWhere(filter.where);
         result.order = this.buildOrder(filter.order);
         result.skip = this.buildSkip(filter.skip);
-        result.take = this.buildTake(filter.skip);
+        result.take = this.buildTake(filter.take);
         return result;
     }
     insert(data) {
-        return this.buildWhere(data);
+        const result = this.buildWhere(data);
+        if (!result.columns.length)
+            return result;
+        const index = result.columns.indexOf(this.primaryKeys[0]);
+        if (index === -1)
+            return result;
+        result.columns.splice(index, 1);
+        result.values.splice(index, 1);
+        return result;
     }
     update(filter, data) {
         return {
