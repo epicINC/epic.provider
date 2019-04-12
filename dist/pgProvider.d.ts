@@ -14,7 +14,7 @@ declare class PGQueryBuilder<T = any> {
     insert<K extends T>(data: Partial<K>): QueryConfig;
     update<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>): {
         text: string;
-        values: any[];
+        values: string[];
     };
     delete<K extends T>(filter: Partial<K>): {
         text: string;

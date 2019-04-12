@@ -48,7 +48,9 @@ class PGQueryBuilder {
     insert(data) {
         let query = this.builder.insert(data);
         return {
-            text: `INSERT INTO "${this.opts.table}" (${query.columns && query.columns.map((e) => `"${e}"`).join(',')}) VALUES (${query.columns && query.columns.map((e, i) => `$${i + 1}`).join(',')}) RETURNING "${this.primaryKeys[0]}";`,
+            text: `
+INSERT INTO "${this.opts.table}" (${query.columns && query.columns.map((e) => `"${e}"`).join(',')}) VALUES (${query.columns && query.columns.map((e, i) => `$${i + 1}`).join(',')})
+RETURNING "${this.primaryKeys[0]}";`,
             values: query.values
         };
     }

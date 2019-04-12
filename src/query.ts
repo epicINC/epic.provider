@@ -66,21 +66,22 @@ export class QueryBuilder<T = any> {
 	}
 
 	insert<K extends T>(data: Partial<K>) {
-		const
-			result =  this.buildWhere(data)
-			
-		if (!result.columns.length) return result
-		const index = result.columns.indexOf(this.primaryKeys[0])
-		if (index === -1) return result
-		result.columns.splice(index, 1)
-		result.values.splice(index, 1)
-		return result
+		return this.removePrimaryKeys(this.buildWhere(data))
+	}
+
+	private removePrimaryKeys(filter: {columns: string[], values: string[]}) {
+		if (!filter.columns.length) return filter
+		const index = filter.columns.indexOf(this.primaryKeys[0])
+		if (index === -1) return filter
+		filter.columns.splice(index, 1)
+		filter.values.splice(index, 1)
+		return filter
 	}
 
 	update<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>) {
 		 return {
 			 filter: this.buildWhere(filter),
-			 data: this.buildWhere(filter)
+			 data: this.removePrimaryKeys(this.buildWhere(data))
 		 }
 	}
 

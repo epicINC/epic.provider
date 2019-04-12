@@ -17,8 +17,9 @@ export declare class QueryBuilder<T = any> {
     query<K extends T>(filter: Partial<K> | Partial<IQueryData>): IQueryBuilderResult;
     insert<K extends T>(data: Partial<K>): {
         columns: string[];
-        values: any[];
+        values: string[];
     };
+    private removePrimaryKeys;
     update<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>): {
         filter: {
             columns: string[];
@@ -26,7 +27,7 @@ export declare class QueryBuilder<T = any> {
         };
         data: {
             columns: string[];
-            values: any[];
+            values: string[];
         };
     };
     delete<K extends T>(filter: Partial<K>): {

@@ -49,20 +49,22 @@ class QueryBuilder {
         return result;
     }
     insert(data) {
-        const result = this.buildWhere(data);
-        if (!result.columns.length)
-            return result;
-        const index = result.columns.indexOf(this.primaryKeys[0]);
+        return this.removePrimaryKeys(this.buildWhere(data));
+    }
+    removePrimaryKeys(filter) {
+        if (!filter.columns.length)
+            return filter;
+        const index = filter.columns.indexOf(this.primaryKeys[0]);
         if (index === -1)
-            return result;
-        result.columns.splice(index, 1);
-        result.values.splice(index, 1);
-        return result;
+            return filter;
+        filter.columns.splice(index, 1);
+        filter.values.splice(index, 1);
+        return filter;
     }
     update(filter, data) {
         return {
             filter: this.buildWhere(filter),
-            data: this.buildWhere(filter)
+            data: this.removePrimaryKeys(this.buildWhere(data))
         };
     }
     delete(filter) {
