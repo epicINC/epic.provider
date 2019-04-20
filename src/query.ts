@@ -18,7 +18,7 @@ export class QueryBuilder<T = any> {
 			this.primaryKeys = this.opts.primaryKeys || ['id']
 	}
 
-	private buildWhere (data: IWhereFilter | undefined) {
+	private buildWhere (data: IWhereFilter<T> | undefined) {
 		if (!data) return {columns:[],  values: []}
 		return {
 			columns: Object.keys(data),
@@ -48,14 +48,14 @@ export class QueryBuilder<T = any> {
 		return data
 	}
 
-	find<K extends T> (filter: Partial<K> | Partial<IQueryData>) {
+	find<K extends T> (filter: Partial<K> | Partial<IQueryData<K>>) {
 		const result = this.query(filter)
 		result.take = 1
 		return result
 	}
 
-	query<K extends T> (filter: Partial<K> | Partial<IQueryData>) {
-		if (!isQuery(filter)) filter = {where: filter}
+	query<K extends T> (filter: Partial<K> | Partial<IQueryData<K>>) {
+		if (!isQuery(filter)) filter = {where: filter as IWhereFilter<K>}
 
 		let result: IQueryBuilderResult = {} as IQueryBuilderResult
 		result.where = this.buildWhere(filter.where)
@@ -112,25 +112,69 @@ function isQuery(data: any) : data is IQueryData {
 }
 
 
-export interface IFieldsFilter {
-	[key: string]: boolean
-}
 
-export interface IIncludeFilter {
+
+
+
+
+export type IFieldsFilter<T> = {
+	[P in keyof T]?: boolean
+} | keyof T | [keyof T][] 
+
+export type IIncludeFilter = {
 	[key: string]: string | string[]
+} | string | string[]
+
+export type IWhereFilter<T> = {
+
+}
+
+export type IPropertyFilter<T> = {
+	[P in keyof T]?: T[P] | T[P][]
 }
 
 
-export interface IWhereFilter {
-	[key: string]: any
+const Operators = {
+	'=': '=',
+	'and': 'AND',
+	'or': 'OR',
+	'gt': '>',
+	'gte': '>=',
+	'lt': '<',
+	'lte': '<=',
+	'between': 'BETWEEN IN ($1, $2)' ,
+	'inq': 'IN ($1)',
+	'nin': 'NOT IN ($1)',
+
+	// WHERE ST_DWithin(A.geom, B.geom, 1609.34) ORDER BY A.geom <-> B.geom
+	// maxDistance location
+	'near': '<->',
+	'neq': '!=',
+	'like': 'LIKE',
+	'nlike': 'NOT LIKE',
+	'ilike': 'LIKE',
+	'nilike': 'NOT LIKE',
+	// regexp_match(string text, pattern text [, flags text])
+	'regexp': 'regexp_match($1, $2)'
+}
+
+export type IOperatorFilter<T> = {
+	[P in keyof T]?: {[O in keyof typeof Operators]: T[P]}
 }
 
 
-export interface IQueryData {
-	fields: string | string[] | IFieldsFilter
-	include: string | string[] | IIncludeFilter
-	where: IWhereFilter
-	order: string | string[] | [string, 'asc'|'desc'][]
+
+export type IOrderFilter<T> = keyof T | [keyof T][] | [keyof T, 'asc'|'desc'][]
+
+
+export interface IQueryData<T = any> {
+	fields: IFieldsFilter<T>
+	include: IIncludeFilter
+	where: IWhereFilter<T>
+	order: IOrderFilter<T>
 	skip: number
 	take: number
 }
+
+
+

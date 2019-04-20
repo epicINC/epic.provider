@@ -84,6 +84,7 @@ class PGProvider {
     async execute(query, ...values) {
         const client = await this.pool.connect();
         try {
+            debug('execute: %o, %o', query, values);
             if (!values || !values.length || typeof (query) === 'object')
                 return await client.query(query);
             return await client.query(query, values);
@@ -94,22 +95,18 @@ class PGProvider {
     }
     async find(filter) {
         const command = this.builder.find(filter);
-        debug('find: %o', command);
         return new QueryResult(await this.execute(command)).single();
     }
     async query(filter) {
         const command = this.builder.query(filter);
-        debug('query: %o', command);
         return new QueryResult(await this.execute(command)).multi();
     }
     async insert(data) {
         const command = this.builder.insert(data);
-        debug('insert: %o', command);
         return new QueryResult(await this.execute(command)).single()[this.builder.primaryKeys[0]] || 0;
     }
     async update(filter, data) {
         const command = this.builder.update(filter, data);
-        debug('update: %o', command);
         return await this.execute(command);
     }
     async upsert(q) {
@@ -117,7 +114,6 @@ class PGProvider {
     }
     async delete(filter) {
         const command = this.builder.delete(filter);
-        debug('del: %o', command);
         return await this.execute(command);
     }
 }
