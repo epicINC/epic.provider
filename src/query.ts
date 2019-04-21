@@ -116,7 +116,6 @@ function isQuery(data: any) : data is IQueryData {
 
 
 
-
 export type IFieldsFilter<T> = {
 	[P in keyof T]?: boolean
 } | keyof T | [keyof T][] 
@@ -125,14 +124,18 @@ export type IIncludeFilter = {
 	[key: string]: string | string[]
 } | string | string[]
 
-export type IWhereFilter<T> = {
 
+
+/*
+const GEOUnitType = {
+	kilometers,
+	meters,
+	miles,
+	feet,
+	radians,
+	degrees
 }
-
-export type IPropertyFilter<T> = {
-	[P in keyof T]?: T[P] | T[P][]
-}
-
+*/
 
 const Operators = {
 	'=': '=',
@@ -158,8 +161,39 @@ const Operators = {
 	'regexp': 'regexp_match($1, $2)'
 }
 
+
+export type IWhereFilter<T> = IPropertyFilter<T> & IPropertyOperatorFilter<T> & IOperatorPropertyFilter<T> & IOperatorFilter<T> | Partial<T>
+
+/*
+{property: value}
+{property: value[]}
+*/
+export type IPropertyFilter<T> = {
+	[P in keyof T]?: T[P] | T[P][]
+}
+
+/*
+{property: {op:value}}
+*/
+export type IPropertyOperatorFilter<T> = {
+	[P in keyof T]?: { [O in keyof typeof Operators]: T[P] | T[P][] }
+}
+
+
+/*
+{op: {property:value}}
+{op: [{property:value}]}
+*/
+export type IOperatorPropertyFilter<T> = {
+	[O in keyof typeof Operators]?: IPropertyFilter<T> | IPropertyFilter<T>[]
+}
+
+
+/*
+{op: [{op: [{property:value}]}]}
+*/
 export type IOperatorFilter<T> = {
-	[P in keyof T]?: {[O in keyof typeof Operators]: T[P]}
+	[O in keyof typeof Operators]?: IOperatorPropertyFilter<T>[]
 }
 
 
