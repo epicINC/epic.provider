@@ -18,7 +18,7 @@ export class QueryBuilder<T = any> {
 			this.primaryKeys = this.opts.primaryKeys || ['id']
 	}
 
-	private buildWhere (data: IWhereFilter<T> | undefined) {
+	private buildWhere<K> (data: IWhereFilter<K> | undefined) {
 		if (!data) return {columns:[],  values: []}
 		return {
 			columns: Object.keys(data),
@@ -26,10 +26,10 @@ export class QueryBuilder<T = any> {
 		}
 	}
 
-	private buildOrder (data: string | ([string, 'asc'|'desc'] | string)[] | undefined) {
+	private buildOrder<K> (data: IOrderFilter<K> | undefined) : ([string, 'asc'|'desc'] | string)[] {
 		if (!data) return undefined as unknown as ([string, 'asc'|'desc'] | string)[]
-		if (!Array.isArray(data)) return [data]
-		return data
+		if (!Array.isArray(data)) return [data] as ([string, 'asc'|'desc'] | string)[]
+		return data as ([string, 'asc'|'desc'] | string)[]
 	}
 
 /*
@@ -59,7 +59,7 @@ export class QueryBuilder<T = any> {
 
 		let result: IQueryBuilderResult = {} as IQueryBuilderResult
 		result.where = this.buildWhere(filter.where)
-		result.order = this.buildOrder(filter.order)
+		result.order = this.buildOrder(filter.order as IOrderFilter<K>)
 		result.skip = this.buildSkip(filter.skip)
 		result.take = this.buildTake(filter.take)
 		return result
@@ -78,9 +78,10 @@ export class QueryBuilder<T = any> {
 		return filter
 	}
 
-	update<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>) {
+	update<K extends T>(filter: Partial<K> | Partial<IQueryData<K>>, data: Partial<K>) {
+		if (!isQuery(filter)) filter = {where: filter as IWhereFilter<K>}
 		 return {
-			 filter: this.buildWhere(filter),
+			 filter: this.buildWhere(filter.where),
 			 data: this.removePrimaryKeys(this.buildWhere(data))
 		 }
 	}
@@ -199,7 +200,7 @@ export type IOperatorFilter<T> = {
 
 
 
-export type IOrderFilter<T> = keyof T | [keyof T][] | [keyof T, 'asc'|'desc'][]
+export type IOrderFilter<T> = string | keyof T | [keyof T] | [keyof T, 'asc'|'desc'][]
 
 
 export interface IQueryData<T = any> {
