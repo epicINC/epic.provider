@@ -64,3 +64,4 @@ yarn.lock
 package-lock.json
 .npmrc
 dist
+.DS_Store
