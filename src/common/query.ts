@@ -17,7 +17,6 @@ export type IIncludeFilter = {
 } | string | string[]
 
 
-
 /*
 const GEOUnitType = {
 	kilometers,
@@ -29,7 +28,7 @@ const GEOUnitType = {
 }
 */
 
-const Operators = {
+export const Operators = {
 	'=': '=',
 	'$eq': '=',
 	'$and': 'AND',

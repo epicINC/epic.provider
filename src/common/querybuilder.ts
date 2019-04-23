@@ -14,7 +14,7 @@ export class QueryBuilderBase<T = any> {
 			this.primaryKeys = this.opts.primaryKeys || ['id']
 	}
 
-	private buildWhere<K> (data: IWhereFilter<K> | undefined) {
+	private buildWhere<K> (data: IWhereFilter<K>) {
 		if (!data) return {columns: [],  values: []}
 		return {
 			columns: Object.keys(data),
@@ -22,7 +22,7 @@ export class QueryBuilderBase<T = any> {
 		}
 	}
 
-	private buildOrder<K> (data: IOrderFilter<K> | undefined) : ([string, 'asc'|'desc'] | string)[] {
+	private buildOrder<K> (data: IOrderFilter<K>) : ([string, 'asc'|'desc'] | string)[] {
 		if (!data) return undefined as unknown as ([string, 'asc'|'desc'] | string)[]
 		if (!Array.isArray(data)) return [data] as ([string, 'asc'|'desc'] | string)[]
 		return data as ([string, 'asc'|'desc'] | string)[]
@@ -51,10 +51,10 @@ export class QueryBuilderBase<T = any> {
 	}
 
 	query<K extends T> (filter: Partial<K> | Partial<IQueryData<K>>) {
-		if (!isQuery(filter)) filter = {where: filter as IWhereFilter<K>}
+		if (!isQuery(filter)) filter = {where: filter}
 
 		let result: IQueryBuilderResult = {} as IQueryBuilderResult
-		result.where = this.buildWhere(filter.where)
+		result.where = this.buildWhere(filter.where as IWhereFilter<K>)
 		result.order = this.buildOrder(filter.order as IOrderFilter<K>)
 		result.skip = this.buildSkip(filter.skip)
 		result.take = this.buildTake(filter.take)
@@ -76,9 +76,9 @@ export class QueryBuilderBase<T = any> {
 	}
 
 	update<K extends T>(filter: Partial<K> | Partial<IQueryData<K>>, data: Partial<K>) {
-		if (!isQuery(filter)) filter = {where: filter as IWhereFilter<K>}
+		if (!isQuery(filter)) filter = {where: filter}
 		return {
-			filter: this.buildWhere(filter.where),
+			filter: this.buildWhere(filter.where as IWhereFilter<K>),
 			data: this.removePrimaryKeys(this.buildWhere(data))
 		}
 	}
@@ -89,11 +89,11 @@ export class QueryBuilderBase<T = any> {
 
 }
 
-function isQuery(data: any) : data is IQueryData {
-	return (<IQueryData>data).fields !== undefined ||
-	(<IQueryData>data).include !== undefined ||
-	(<IQueryData>data).where !== undefined ||
+function isQuery<T>(data: Partial<T> | Partial<IQueryData<T>>) : data is Partial<IQueryData<T>> {
+	return (<IQueryData>data).where !== undefined ||
+	(<IQueryData>data).fields !== undefined ||
 	(<IQueryData>data).order !== undefined ||
 	(<IQueryData>data).skip !== undefined ||
-	(<IQueryData>data).take !== undefined
+	(<IQueryData>data).take !== undefined ||
+	(<IQueryData>data).include !== undefined
 }

@@ -2,9 +2,9 @@ import { Pool } from 'pg'
 import { PGProvider as Provider, parse, IWhereFilter } from '../src/index'
 
 interface IUser {
-  id: number
-  name: string
-  createTime: Date
+	id: number
+	name: string
+	createTime: Date
 }
 
 
@@ -13,14 +13,14 @@ interface IUser {
 {property: value[]}
 */
 function test1 () {
-  let query: IWhereFilter<IUser> = {id:[1,2,3], createTime: new Date()}
+	let query: IWhereFilter<IUser> = {id: [1, 2, 3], createTime: new Date()}
 }
 
 /*
 {property: {op:value}}
 */
 function test2 () {
-  let query: IWhereFilter<IUser> = {id: {$or: [1,2,3], }, createTime: {$and: new Date()}}
+	let query: IWhereFilter<IUser> = {id: {$or: [1, 2, 3], }, createTime: {$and: new Date()}}
 }
 
 /*
@@ -28,53 +28,53 @@ function test2 () {
 {op: [{property:value}]}
 */
 function test3 () {
-  let query: IWhereFilter<IUser> = {$or: {id: [1,2,3]}, $and: {createTime: new Date()}}
+	let query: IWhereFilter<IUser> = {$or: {id: [1, 2, 3]}, $and: {createTime: new Date()}}
 }
 
 /*
 {op: [{op: [{property:value}]}]}
 */
 function test4() {
-  let query: IWhereFilter<IUser> = {$or: [{$and: {id:1}, $ilike: [{id:1, createTime: new Date()}]}]}
+	let query: IWhereFilter<IUser> = {$or: [{$and: {id: 1}, $ilike: [{id: 1, createTime: new Date()}]}]}
 }
 
 
 
 /*-
-  $eq: Op.eq,
-  $ne: Op.ne,
-  $gte: Op.gte,
-  $gt: Op.gt,
-  $lte: Op.lte,
-  $lt: Op.lt,
-  $not: Op.not,
-  $in: Op.in,
-  $notIn: Op.notIn,
-  $is: Op.is,
-  $like: Op.like,
-  $notLike: Op.notLike,
-  $iLike: Op.iLike,
-  $notILike: Op.notILike,
-  $regexp: Op.regexp,
-  $notRegexp: Op.notRegexp,
-  $iRegexp: Op.iRegexp,
-  $notIRegexp: Op.notIRegexp,
-  $between: Op.between,
-  $notBetween: Op.notBetween,
-  $overlap: Op.overlap,
-  $contains: Op.contains,
-  $contained: Op.contained,
-  $adjacent: Op.adjacent,
-  $strictLeft: Op.strictLeft,
-  $strictRight: Op.strictRight,
-  $noExtendRight: Op.noExtendRight,
-  $noExtendLeft: Op.noExtendLeft,
-  $and: Op.and,
-  $or: Op.or,
-  $any: Op.any,
-  $all: Op.all,
-  $values: Op.values,
-  $col: Op.col
+	$eq: Op.eq,
+	$ne: Op.ne,
+	$gte: Op.gte,
+	$gt: Op.gt,
+	$lte: Op.lte,
+	$lt: Op.lt,
+	$not: Op.not,
+	$in: Op.in,
+	$notIn: Op.notIn,
+	$is: Op.is,
+	$like: Op.like,
+	$notLike: Op.notLike,
+	$iLike: Op.iLike,
+	$notILike: Op.notILike,
+	$regexp: Op.regexp,
+	$notRegexp: Op.notRegexp,
+	$iRegexp: Op.iRegexp,
+	$notIRegexp: Op.notIRegexp,
+	$between: Op.between,
+	$notBetween: Op.notBetween,
+	$overlap: Op.overlap,
+	$contains: Op.contains,
+	$contained: Op.contained,
+	$adjacent: Op.adjacent,
+	$strictLeft: Op.strictLeft,
+	$strictRight: Op.strictRight,
+	$noExtendRight: Op.noExtendRight,
+	$noExtendLeft: Op.noExtendLeft,
+	$and: Op.and,
+	$or: Op.or,
+	$any: Op.any,
+	$all: Op.all,
+	$values: Op.values,
+	$col: Op.col
 +
 
 [Op.and]: {a: 5}           // AND (a = 5)
@@ -102,7 +102,7 @@ function test4() {
 [Op.iRegexp]: '^[h|a|t]'    // ~* '^[h|a|t]' (PG only)
 [Op.notIRegexp]: '^[h|a|t]' // !~* '^[h|a|t]' (PG only)
 [Op.like]: { [Op.any]: ['cat', 'hat']}
-                       // LIKE ANY ARRAY['cat', 'hat'] - also works for iLike and notLike
+											 // LIKE ANY ARRAY['cat', 'hat'] - also works for iLike and notLike
 [Op.overlap]: [1, 2]       // && [1, 2] (PG array overlap operator)
 [Op.contains]: [1, 2]      // @> [1, 2] (PG array contains operator)
 [Op.contained]: [1, 2]     // <@ [1, 2] (PG array contained by operator)
@@ -128,7 +128,7 @@ async function test() {
 		description: '',
 		rules: {
 			days: [{start: Date.now(), end: Date.now()}],
-			sets: {'default': { in:1, out:1, strict: true } }
+			sets: {'default': { in: 1, out: 1, strict: true } }
 		},
 		createTime: new Date()
 	}

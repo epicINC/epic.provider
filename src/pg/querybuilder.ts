@@ -1,6 +1,7 @@
-import { IQueryBuilderResult, IQueryData, IProviderOptions } from '../common'
 import { QueryConfig } from 'pg'
+import { IQueryBuilderResult, IQueryData, IProviderOptions } from '../common'
 import { QueryBuilderBase } from '../common/querybuilder'
+
 
 
 
@@ -29,13 +30,23 @@ export class PGQueryBuilder<T = any> {
 		return `"${this.columnTransform(data[0])} ${data[1]}"`
 	}
 
-	private buildQuery(query: IQueryBuilderResult) {
+	protected buildLimit (take: number) {
+		if (!take || isNaN(take)) return ''
+		return `LIMIT ${take}`
+	}
+
+	protected buildOffset (skip: number) {
+		if (!skip || isNaN(skip)) return ''
+		return `OFFSET ${skip}`
+	}
+
+	protected buildQuery(query: IQueryBuilderResult) {
 		return {
 			text: `SELECT * FROM ${this.opts.table}
 			WHERE ${query.where.columns && query.where.columns.map((e: any, i: number) => `"${this.columnTransform(e)}"=$${i + 1}`).join(' AND ') }
 			${query.order && ` ORDER BY ${ query.order.map(e => this.buildOrderItem(e)).join(',') }` || ''}
-			${query.take && ' LIMIT '+ query.take || ''}
-			${ query.skip && ' OFFSET '+ query.skip || '' };`,
+			${this.buildLimit(query.take)}
+			${this.buildOffset(query.skip)};`,
 			values: query.where.values
 		}
 	}

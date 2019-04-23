@@ -7,6 +7,8 @@
     "lib": "lib"
   },
   "scripts": {
+    "lint": "tslint --project tslint.json",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "S",
