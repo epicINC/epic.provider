@@ -12,10 +12,11 @@
   "author": "S",
   "license": "ISC",
   "dependencies": {
-    "debug": "^4.1.1"
+    "debug": "^4.1.1",
+    "typescript-tslint-plugin": "^0.3.1"
   },
   "devDependencies": {
-		"pg": "^7.8.1",
-		"@types/pg": "^7.4.13"
+    "@types/pg": "^7.4.13",
+    "pg": "^7.10.0"
   }
 }

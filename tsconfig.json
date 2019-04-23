@@ -21,7 +21,10 @@
         "noUnusedLocals": true,
         "skipDefaultLibCheck": true,
         "skipLibCheck": true,
-        "strictNullChecks": true
+        "strictNullChecks": true,
+        "plugins": [
+            { "name": "typescript-tslint-plugin" }
+          ]
     },
     "formatCodeOptions": {
         "indentSize": 2,

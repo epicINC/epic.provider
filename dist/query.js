@@ -62,8 +62,10 @@ class QueryBuilder {
         return filter;
     }
     update(filter, data) {
+        if (!isQuery(filter))
+            filter = { where: filter };
         return {
-            filter: this.buildWhere(filter),
+            filter: this.buildWhere(filter.where),
             data: this.removePrimaryKeys(this.buildWhere(data))
         };
     }
@@ -80,4 +82,24 @@ function isQuery(data) {
         data.skip !== undefined ||
         data.take !== undefined;
 }
+const Operators = {
+    '=': '=',
+    '$eq': '=',
+    '$and': 'AND',
+    '$or': 'OR',
+    '$gt': '>',
+    '$gte': '>=',
+    '$lt': '<',
+    '$lte': '<=',
+    '$between': 'BETWEEN IN ($1, $2)',
+    '$inq': 'IN ($1)',
+    '$nin': 'NOT IN ($1)',
+    '$near': '<->',
+    '$neq': '!=',
+    '$like': 'LIKE',
+    '$nlike': 'NOT LIKE',
+    '$ilike': 'LIKE',
+    '$nilike': 'NOT LIKE',
+    '$regexp': 'regexp_match($1, $2)'
+};
 //# sourceMappingURL=query.js.map

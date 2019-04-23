@@ -1,3 +1,3 @@
 
-export * from './pgProvider'
-export * from './pgConnectionStrings'
+export * from './pg/provider'
+export * from './pg/connectionStrings'
