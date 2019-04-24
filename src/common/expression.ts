@@ -37,23 +37,42 @@ export abstract class Expression {
 		return new ParameterExpression(name)
 	}
 
+	static reduce(nodeType: ExpressionType, nodes: Expression[]) {
+		return nodes.reduce((accumulator, currentValue) => Expression.makeBinary(nodeType, accumulator, currentValue))
+	}
+
+}
+
+export class ExpressionBuilder {
+
+	static build(data: any) {
+		if (Array.isArray(data)) return data.map(e => ExpressionBuilder.build(e))
+		if (typeof(data) !== 'object') return data
+
+		Object.entries(data).map(([key, val]) => {
+			if (OperatorMap.has(key)) return this[key](val)
+			return Expression.makeBinary(ExpressionType.Equal, Expression.makeParameter(key), ExpressionBuilder.build(val))
+		})
+
+	}
+
+	eql (data: any) {
+		let result = ExpressionBuilder.build(data)
+		if (!Array.isArray(result)) return result
+		return Expression.reduce(ExpressionType.Equal, result)
+	}
+
+	and (data: any) {
+		let result = ExpressionBuilder.build(data)
+		if (!Array.isArray(result)®) return result
+		return Expression.reduce(ExpressionType.And, result)
+	}
 }
 
 export class ExpressionVisitor {
 
 	visit(data: any) {
-		if (Array.isArray(data)) return data.map(e => this.visit(e))
-		if (typeof(data) !== 'object') return data
 
-		Object.entries(data).map(([key, val]) => {
-			if (OperatorMap.has(key)) return this[key](val)
-			return Expression.makeBinary(ExpressionType.Equal, Expression.makeParameter(key), this.visit(val))
-		})
-
-		['='] (data: any) {
-			return new 
-		}
-	
 	}
 
 	visitExtension (node: Expression) {
