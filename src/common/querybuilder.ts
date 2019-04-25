@@ -21,7 +21,7 @@ export class QueryBuilderBase<T = any> {
 			values: Object.values(data)
 		}
 	}
-
+	
 	private buildOrder<K> (data: IOrderFilter<K>) : ([string, 'asc'|'desc'] | string)[] {
 		if (!data) return undefined as unknown as ([string, 'asc'|'desc'] | string)[]
 		if (!Array.isArray(data)) return [data] as ([string, 'asc'|'desc'] | string)[]
