@@ -2,8 +2,8 @@
 const debug = require('debug')('epic.provider.pg')
 
 import { Pool, QueryConfig, QueryResult as PGQueryResult } from 'pg'
-import { IProviderOptions, IQueryData, IProvider } from '../common';
-import { PGQueryBuilder } from './querybuilder';
+import { IProviderOptions, IQueryData, IProvider } from '../common'
+import { PGQueryBuilder } from './querybuilder'
 
 
 export class PGProvider<T = any> implements IProvider<T> {

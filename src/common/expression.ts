@@ -1,4 +1,4 @@
-import { Operators, IWhereFilter } from './query'
+import { Operators } from './query'
 
 
 const OperatorMap = new Set(Object.keys(Operators))
@@ -27,8 +27,6 @@ export abstract class Expression {
 		return this
 	}
 
-
-
 	static makeBinary (binaryType: ExpressionType, left: Expression, right: Expression) {
 		return new SimpleBinaryExpression(ExpressionType.Add, left, right)
 	}
@@ -45,7 +43,7 @@ export abstract class Expression {
 
 export class ExpressionBuilder {
 
-	static build(data: any) {
+	static build(data: any) : any {
 		if (Array.isArray(data)) return data.map(e => ExpressionBuilder.build(e))
 		if (typeof(data) !== 'object') return data
 
@@ -53,7 +51,6 @@ export class ExpressionBuilder {
 			if (OperatorMap.has(key)) return this[key](val)
 			return Expression.makeBinary(ExpressionType.Equal, Expression.makeParameter(key), ExpressionBuilder.build(val))
 		})
-
 	}
 
 	eql (data: any) {
@@ -64,7 +61,7 @@ export class ExpressionBuilder {
 
 	and (data: any) {
 		let result = ExpressionBuilder.build(data)
-		if (!Array.isArray(result)®) return result
+		if (!Array.isArray(result)) return result
 		return Expression.reduce(ExpressionType.And, result)
 	}
 }

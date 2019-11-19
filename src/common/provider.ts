@@ -7,7 +7,7 @@ export interface IProviderOptions {
 }
 
 export interface IProvider<T> {
-	find<K extends T>(filter: Partial<K> | Partial<IQueryData>) : Promise<K>
+	find<K extends T>(filter: Partial<K> | Partial<IQueryData>) : Promise<K | null>
 	query<K extends T>(filter: Partial<K> | Partial<IQueryData>) : Promise<K[]>
 	insert<K extends T>(data: Partial<K>) : Promise<any>
 	update<K extends T>(filter: Partial<K> | Partial<IQueryData>, data: Partial<K>) : Promise<any>
